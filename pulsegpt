@@ -1,0 +1,52 @@
+import subprocess
+import whisper
+from openai import OpenAI
+
+
+# Define the path to your video file. This path will depend on where you have stored the file. Add your file path here.
+video_file_path = '/Users/meenal/Desktop/cdg.mp4'
+# Add your api key here.
+client = OpenAI(api_key="*****")
+
+# Function to split the video file into smaller chunks
+def split_video(file_path, chunk_duration=200):
+    # Calculate the output file pattern
+    output_pattern = file_path.rsplit('.', 1)[0] + '_chunk_%03d.mp4'
+    
+    # Use ffmpeg to split the video into chunks of the specified duration
+    subprocess.run([
+        'ffmpeg',
+        '-i', file_path,
+        '-c', 'copy',
+        '-map', '0',
+        '-segment_time', str(chunk_duration),  # Duration in seconds
+        '-f', 'segment',
+        '-reset_timestamps', '1',
+        output_pattern
+    ])
+
+# Function to transcribe a given audio/video file using Whisper
+def transcribe_file(file_path):
+    audio_file = open(file_path, "rb")
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1", 
+        file=audio_file, 
+        response_format="text"
+    )
+    print(transcription)
+    return transcription
+
+
+# Split the video into chunks of approx 3 minutes (200 seconds) each
+split_video(video_file_path, 200)
+
+# Assuming you have two chunks now, you can transcribe them as follows:
+transcriptions = []
+for i in range(1, 3):  # Adjust the range based on the number of chunks
+    chunk_path = f'/Users/meenal/Desktop/cdg_chunk_{i:03d}.mp4'
+    transcription = transcribe_file(chunk_path)
+    transcriptions.append(transcription)
+
+# Print or save the transcriptions as needed
+for i, transcription in enumerate(transcriptions, 1):
+    print(f":\n{transcription}\n")
